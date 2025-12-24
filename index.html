@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhatsApp Wrapped - Your Chat Story</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        whatsapp: {
+                            green: '#25D366',
+                            teal: '#128C7E',
+                            dark: '#075E54',
+                            bg: '#ECE5DD'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    animation: {
+                        'progress': 'progress 5s linear forwards',
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                        'spin-slow': 'spin 3s linear infinite',
+                        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        progress: {
+                            '0%': { width: '0%' },
+                            '100%': { width: '100%' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { boxShadow: '0 0 20px rgba(34, 197, 94, 0.5)' },
+                            '50%': { boxShadow: '0 0 40px rgba(34, 197, 94, 0.8)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Outfit:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Outfit', sans-serif;
+            background-color: #111b21;
+            color: #e9edef;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .gradient-bg-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .gradient-bg-2 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .gradient-bg-3 {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .gradient-bg-4 {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .gradient-bg-5 {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .gradient-bg-6 {
+            background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+        }
+
+        .gradient-bg-7 {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        .gradient-bg-8 {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        }
+
+        .gradient-bg-9 {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        }
+
+        .gradient-bg-10 {
+            background: linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <!-- MAIN SCRIPT -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- PARSER LOGIC ---
+        const parseChat = (text) => {
+            const lines = text.split('\n');
+            const messages = [];
+
+            const dateRegex = /^\[?(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})[,\s]+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?)\]?(?:\s-\s)?\s(.+?):\s(.+)/i;
+
+            let isMonthFirst = null;
+            let currentMessage = null;
+
+            lines.forEach((line) => {
+                line = line.replace(/[\u200e\u200f]/g, "").trim();
+                if (!line) return;
+
+                const match = line.match(dateRegex);
+
+                if (match) {
+                    const [_, dateStr, timeStr, sender, content] = match;
+
+                    if (isMonthFirst === null) {
+                        const parts = dateStr.split(/[\/.-]/);
+                        if (parts.length >= 2) {
+                            const first = parseInt(parts[0]);
+                            const second = parseInt(parts[1]);
+                            if (first > 12) isMonthFirst = false;
+                            else if (second > 12) isMonthFirst = true;
+                        }
+                    }
+
+                    const dateTime = parseDateTime(dateStr, timeStr, isMonthFirst);
+
+                    currentMessage = {
+                        date: dateTime,
+                        author: sender,
+                        content: content,
+                        wordCount: content.split(/\s+/).length
+                    };
+                    messages.push(currentMessage);
+                } else if (currentMessage) {
+                    currentMessage.content += '\n' + line;
+                    currentMessage.wordCount = currentMessage.content.split(/\s+/).length;
+                }
+            });
+
+            console.log(`Parsed ${messages.length} messages.`);
+            return messages;
+        };
+
+        function parseDateTime(dateStr, timeStr, isMonthFirst) {
+            let dStr = dateStr.replace(/[-.]/g, '/');
+            const tStr = timeStr.replace(/[\[\]]/g, '');
+
+            const parts = dStr.split('/');
+            let day, month, year;
+
+            if (parts.length === 3) {
+                let p0 = parseInt(parts[0]);
+                let p1 = parseInt(parts[1]);
+                let p2 = parseInt(parts[2]);
+
+                if (p2 < 100) p2 += 2000;
+
+                if (isMonthFirst === true) {
+                    month = p0 - 1;
+                    day = p1;
+                } else {
+                    day = p0;
+                    month = p1 - 1;
+                }
+                year = p2;
+
+                const timeParts = tStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s?([AP]M))?/i);
+                if (timeParts) {
+                    let hrs = parseInt(timeParts[1]);
+                    let mins = parseInt(timeParts[2]);
+                    let ampm = timeParts[4];
+
+                    if (ampm) {
+                        if (ampm.toUpperCase() === 'PM' && hrs < 12) hrs += 12;
+                        if (ampm.toUpperCase() === 'AM' && hrs === 12) hrs = 0;
+                    }
+
+                    return new Date(year, month, day, hrs, mins);
+                }
+            }
+
+            return new Date(`${dStr} ${tStr}`);
+        }
+
+        // --- ENHANCED ANALYZER LOGIC ---
+        const analyzeChat = (messages) => {
+            const validMessages = messages.filter(m => m.date && !isNaN(m.date.getTime()));
+            if (validMessages.length === 0) return null;
+
+            // Sort by date
+            validMessages.sort((a, b) => a.date - b.date);
+
+            const totalMessages = validMessages.length;
+            const authors = {};
+            const hours = new Array(24).fill(0);
+            const weekdays = new Array(7).fill(0);
+            const emojiCounts = {};
+            const authorEmojis = {};
+            const emojiRegex = /\p{Emoji_Presentation}/gu;
+            const wordFreq = {};
+            const authorWords = {};
+
+            // Stopwords for filtering
+            const stopwords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'me', 'him', 'them', 'us', 'what', 'when', 'where', 'who', 'which', 'how', 'why', 'all', 'each', 'every', 'some', 'any', 'no', 'not', 'so', 'than', 'too', 'very', 'just', 'now', 'ok', 'okay', 'yeah', 'yes', 'no', 'oh', 'ah', 'um', 'uh']);
+
+            validMessages.forEach(msg => {
+                // Authors
+                authors[msg.author] = (authors[msg.author] || 0) + 1;
+
+                // Hours & Weekdays
+                hours[msg.date.getHours()]++;
+                weekdays[msg.date.getDay()]++;
+
+                // Emojis
+                const matches = msg.content.match(emojiRegex);
+                if (matches) {
+                    if (!authorEmojis[msg.author]) authorEmojis[msg.author] = 0;
+                    authorEmojis[msg.author] += matches.length;
+                    matches.forEach(e => emojiCounts[e] = (emojiCounts[e] || 0) + 1);
+                }
+
+                // Words
+                const words = msg.content.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
+                words.forEach(word => {
+                    if (!stopwords.has(word)) {
+                        wordFreq[word] = (wordFreq[word] || 0) + 1;
+                        if (!authorWords[msg.author]) authorWords[msg.author] = {};
+                        authorWords[msg.author][word] = (authorWords[msg.author][word] || 0) + 1;
+                    }
+                });
+            });
+
+            const sortedAuthors = Object.entries(authors)
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, count]) => ({ name, count }));
+
+            const topEmojis = Object.entries(emojiCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([emoji, count]) => ({ emoji, count }));
+
+            const topEmojiUser = Object.entries(authorEmojis).sort((a, b) => b[1] - a[1])[0];
+
+            // Day-based analysis
+            const dayMap = {};
+            validMessages.forEach(msg => {
+                const dayKey = msg.date.toISOString().split('T')[0];
+                dayMap[dayKey] = (dayMap[dayKey] || 0) + 1;
+            });
+
+            const sortedDays = Object.entries(dayMap).sort((a, b) => b[1] - a[1]);
+            const mostActiveDay = sortedDays[0];
+
+            // Streak calculation
+            const allDays = Object.keys(dayMap).sort();
+            let longestStreak = 0;
+            let currentStreak = 1;
+
+            for (let i = 1; i < allDays.length; i++) {
+                const prevDate = new Date(allDays[i - 1]);
+                const currDate = new Date(allDays[i]);
+                const diffDays = (currDate - prevDate) / (1000 * 60 * 60 * 24);
+
+                if (diffDays === 1) {
+                    currentStreak++;
+                } else {
+                    longestStreak = Math.max(longestStreak, currentStreak);
+                    currentStreak = 1;
+                }
+            }
+            longestStreak = Math.max(longestStreak, currentStreak);
+
+            // Silence analysis
+            let longestGap = 0;
+            let longestGapStart = null;
+            let longestGapEnd = null;
+
+            for (let i = 1; i < validMessages.length; i++) {
+                const gap = (validMessages[i].date - validMessages[i - 1].date) / (1000 * 60 * 60);
+                if (gap > longestGap) {
+                    longestGap = gap;
+                    longestGapStart = validMessages[i - 1].date;
+                    longestGapEnd = validMessages[i].date;
+                }
+            }
+
+            // Silence breaker
+            const silenceBreaks = {};
+            for (let i = 1; i < validMessages.length; i++) {
+                const gap = (validMessages[i].date - validMessages[i - 1].date) / (1000 * 60 * 60);
+                if (gap > 6) { // 6 hour threshold
+                    silenceBreaks[validMessages[i].author] = (silenceBreaks[validMessages[i].author] || 0) + 1;
+                }
+            }
+            const silenceBreaker = Object.entries(silenceBreaks).sort((a, b) => b[1] - a[1])[0];
+
+            // Rapid fire detection
+            const rapidFire = {};
+            for (let i = 1; i < validMessages.length; i++) {
+                if (validMessages[i].author === validMessages[i - 1].author) {
+                    const gap = (validMessages[i].date - validMessages[i - 1].date) / 1000;
+                    if (gap < 60) {
+                        rapidFire[validMessages[i].author] = (rapidFire[validMessages[i].author] || 0) + 1;
+                    }
+                }
+            }
+            const rapidFireKing = Object.entries(rapidFire).sort((a, b) => b[1] - a[1])[0];
+
+            // Essayist (longest message)
+            let longestMsg = validMessages[0];
+            validMessages.forEach(msg => {
+                if (msg.wordCount > longestMsg.wordCount) longestMsg = msg;
+            });
+
+            // Typing vibe (avg words per message per author)
+            const authorAvgWords = {};
+            const authorMsgCount = {};
+            validMessages.forEach(msg => {
+                if (!authorAvgWords[msg.author]) {
+                    authorAvgWords[msg.author] = 0;
+                    authorMsgCount[msg.author] = 0;
+                }
+                authorAvgWords[msg.author] += msg.wordCount;
+                authorMsgCount[msg.author]++;
+            });
+            Object.keys(authorAvgWords).forEach(author => {
+                authorAvgWords[author] = Math.round(authorAvgWords[author] / authorMsgCount[author]);
+            });
+
+            // Signature words (unique to each author)
+            const signatureWords = {};
+            Object.keys(authorWords).forEach(author => {
+                const otherAuthors = Object.keys(authorWords).filter(a => a !== author);
+                const uniqueWords = [];
+
+                Object.entries(authorWords[author])
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 20)
+                    .forEach(([word, count]) => {
+                        const isUnique = otherAuthors.every(other => {
+                            const otherCount = authorWords[other]?.[word] || 0;
+                            return count > otherCount * 2;
+                        });
+                        if (isUnique && uniqueWords.length < 3) uniqueWords.push(word);
+                    });
+
+                signatureWords[author] = uniqueWords;
+            });
+
+            // Most repeated words overall
+            const topWords = Object.entries(wordFreq)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([word, count]) => ({ word, count }));
+
+            // Main character energy (who dominates recent period)
+            const recentDays = 30;
+            const recentCutoff = new Date(validMessages[validMessages.length - 1].date);
+            recentCutoff.setDate(recentCutoff.getDate() - recentDays);
+            const recentMsgs = validMessages.filter(m => m.date >= recentCutoff);
+            const recentAuthors = {};
+            recentMsgs.forEach(m => recentAuthors[m.author] = (recentAuthors[m.author] || 0) + 1);
+            const mainCharacter = Object.entries(recentAuthors).sort((a, b) => b[1] - a[1])[0];
+
+            const durationMs = validMessages[validMessages.length - 1].date - validMessages[0].date;
+            const durationDays = Math.floor(durationMs / (1000 * 60 * 60 * 24));
+
+            return {
+                totalMessages,
+                authors: sortedAuthors,
+                hours,
+                weekdays,
+                topEmojis,
+                topEmojiUser: topEmojiUser ? { name: topEmojiUser[0], count: topEmojiUser[1] } : null,
+                durationDays,
+                longestStreak,
+                mostActiveDay: mostActiveDay ? { date: mostActiveDay[0], count: mostActiveDay[1] } : null,
+                longestSilence: { hours: Math.round(longestGap), start: longestGapStart, end: longestGapEnd },
+                silenceBreaker: silenceBreaker ? { name: silenceBreaker[0], count: silenceBreaker[1] } : null,
+                rapidFireKing: rapidFireKing ? { name: rapidFireKing[0], count: rapidFireKing[1] } : null,
+                essayist: { name: longestMsg.author, wordCount: longestMsg.wordCount, preview: longestMsg.content.substring(0, 200) },
+                typingVibe: authorAvgWords,
+                signatureWords,
+                topWords,
+                mainCharacter: mainCharacter ? { name: mainCharacter[0], count: mainCharacter[1], days: recentDays } : null,
+                firstDate: validMessages[0].date,
+                lastDate: validMessages[validMessages.length - 1].date
+            };
+        };
+
+        // --- COMPONENTS ---
+
+        function Landing({ onFileUpload, loading, error }) {
+            const [isDragging, setIsDragging] = useState(false);
+            const fileInputRef = useRef(null);
+
+            const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+            const handleDragLeave = () => setIsDragging(false);
+            const handleDrop = (e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const file = e.dataTransfer.files[0];
+                if (file) onFileUpload(file);
+            };
+
+            useEffect(() => {
+                lucide.createIcons();
+            }, []);
+
+            return (
+                <div className="max-w-xl w-full text-center space-y-8 animate-fade-in-up">
+                    <div className="space-y-4">
+                        <h1 className="text-5xl font-bold bg-gradient-to-r from-green-400 via-teal-500 to-blue-500 bg-clip-text text-transparent">
+                            WhatsApp Wrapped
+                        </h1>
+                        <p className="text-gray-400 text-lg">
+                            Relive your chat history. 100% private, 100% yours. ✨
+                        </p>
+                    </div>
+
+                    <div
+                        className={`
+                border-3 border-dashed rounded-3xl p-12 transition-all duration-300 cursor-pointer
+                ${isDragging ? 'border-green-500 bg-green-500/10 scale-102' : 'border-gray-700 hover:border-green-500/50 hover:bg-gray-800/50'}
+              `}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        <input type="file" ref={fileInputRef} className="hidden" accept=".txt" onChange={(e) => e.target.files[0] && onFileUpload(e.target.files[0])} />
+
+                        <div className="flex flex-col items-center gap-4">
+                            {loading ? (
+                                <i data-lucide="loader-2" className="w-16 h-16 text-green-500 animate-spin"></i>
+                            ) : (
+                                <i data-lucide="upload" className={`w-16 h-16 ${isDragging ? 'text-green-400' : 'text-gray-500'}`}></i>
+                            )}
+
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-semibold text-gray-200">
+                                    {loading ? 'Analyzing your chat...' : 'Drop your WhatsApp chat file here'}
+                                </h3>
+                                <p className="text-sm text-gray-500">or click to browse (.txt files)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400">
+                            <i data-lucide="alert-circle" className="w-5 h-5"></i>
+                            <span>{error}</span>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- STORY SLIDES ---
+        const SlideWrapper = ({ children, bgClass = "" }) => (
+            <div className={`w-full h-full flex items-center justify-center p-6 md:p-12 ${bgClass}`}>
+                <div className="animate-fade-in-up w-full max-w-md md:max-w-2xl lg:max-w-4xl">
+                    {children}
+                </div>
+            </div>
+        );
+
+        const IntroSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-1">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">💬</div>
+                    <h1 className="text-5xl font-bold">Your Chat<br />Wrapped</h1>
+                    <p className="text-xl text-white/80">
+                        From {new Date(data.firstDate).toLocaleDateString()} <br />
+                        to {new Date(data.lastDate).toLocaleDateString()}
+                    </p>
+                </div>
+            </SlideWrapper>
+        );
+
+        const TotalSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-2">
+                <div className="text-center space-y-4">
+                    <div className="text-5xl mb-4">📊</div>
+                    <h2 className="text-2xl font-semibold">Total Messages</h2>
+                    <div className="text-7xl font-bold my-8">
+                        {data.totalMessages.toLocaleString()}
+                    </div>
+                    <p className="text-white/80">
+                        About {Math.round(data.totalMessages / Math.max(data.durationDays, 1))} messages per day!
+                    </p>
+                </div>
+            </SlideWrapper>
+        );
+
+        const StreakSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-3">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">🔥</div>
+                    <h2 className="text-3xl font-bold">Longest Streak</h2>
+                    <div className="text-7xl font-bold my-8">{data.longestStreak}</div>
+                    <p className="text-white/80">consecutive days of chatting!</p>
+                </div>
+            </SlideWrapper>
+        );
+
+        const AuthorsSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-4">
+                <div className="w-full space-y-6">
+                    <div className="text-center mb-8">
+                        <div className="text-5xl mb-4">👑</div>
+                        <h2 className="text-3xl font-bold">Top Chatterbox</h2>
+                    </div>
+                    <div className="space-y-4">
+                        {data.authors.slice(0, 5).map((author, i) => (
+                            <div key={i} className="flex items-center gap-4 p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+                                <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center font-bold text-black text-xs">
+                                    {i + 1}
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                    <div className="font-semibold truncate">{author.name}</div>
+                                    <div className="h-1 mt-1 bg-white/20 rounded-full overflow-hidden">
+                                        <div className="h-full bg-white" style={{ width: `${(author.count / data.totalMessages) * 100}%` }}></div>
+                                    </div>
+                                </div>
+                                <div className="font-mono text-sm">{author.count}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </SlideWrapper>
+        );
+
+        const MostActiveDaySlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-5">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">📅</div>
+                    <h2 className="text-3xl font-bold">Most Active Day</h2>
+                    <div className="py-6">
+                        <div className="text-4xl font-bold mb-2">
+                            {new Date(data.mostActiveDay.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                        </div>
+                        <div className="text-6xl font-bold my-4">{data.mostActiveDay.count}</div>
+                        <div className="text-white/80">messages sent!</div>
+                    </div>
+                </div>
+            </SlideWrapper>
+        );
+
+        const WeeklyFlowSlide = ({ data }) => {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const maxDay = Math.max(...data.weekdays);
+
+            return (
+                <SlideWrapper bgClass="gradient-bg-6">
+                    <div className="text-center space-y-6">
+                        <div className="text-5xl mb-4">📊</div>
+                        <h2 className="text-3xl font-bold text-white">Weekly Flow</h2>
+                        <div className="h-48 flex items-end justify-center gap-2 my-8">
+                            {data.weekdays.map((count, i) => (
+                                <div key={i} className="flex flex-col items-center flex-1 gap-2">
+                                    <div
+                                        className={`w-full rounded-t-lg transition-all ${count === maxDay ? 'bg-yellow-400' : 'bg-white/40'}`}
+                                        style={{ height: `${(count / maxDay) * 100}%` }}
+                                    ></div>
+                                    <div className="text-xs font-semibold text-white">{days[i]}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </SlideWrapper>
+            );
+        };
+
+        const TimeSlide = ({ data }) => {
+            const maxHour = data.hours.indexOf(Math.max(...data.hours));
+            const formatHour = (h) => new Date(0, 0, 0, h).toLocaleTimeString([], { hour: 'numeric', hour12: true });
+
+            return (
+                <SlideWrapper bgClass="gradient-bg-7">
+                    <div className="text-center space-y-6">
+                        <div className="text-5xl mb-4">⏰</div>
+                        <h2 className="text-3xl font-bold text-gray-800">Peak Hours</h2>
+                        <div className="py-8">
+                            <div className="text-6xl font-bold mb-2 text-gray-900">{formatHour(maxHour)}</div>
+                            <div className="text-gray-700">is your busiest time</div>
+                        </div>
+                        <div className="h-32 flex items-end justify-center gap-1">
+                            {data.hours.map((count, h) => (
+                                <div
+                                    key={h}
+                                    className={`w-full rounded-t-sm ${h === maxHour ? 'bg-pink-600' : 'bg-pink-300/50'}`}
+                                    style={{ height: `${(count / Math.max(...data.hours)) * 100}%` }}
+                                ></div>
+                            ))}
+                        </div>
+                    </div>
+                </SlideWrapper>
+            );
+        };
+
+        const LongestSilenceSlide = ({ data }) => {
+            const formatDuration = (hours) => {
+                const days = Math.floor(hours / 24);
+                const hrs = Math.floor(hours % 24);
+                if (days > 0) return `${days}d ${hrs}h`;
+                return `${hrs}h`;
+            };
+
+            return (
+                <SlideWrapper bgClass="gradient-bg-8">
+                    <div className="text-center space-y-6">
+                        <div className="text-6xl mb-4">😶</div>
+                        <h2 className="text-3xl font-bold text-gray-800">Longest Silence</h2>
+                        <div className="py-6">
+                            <div className="text-6xl font-bold text-gray-900">{formatDuration(data.longestSilence.hours)}</div>
+                            <div className="text-gray-700 mt-4">of radio silence</div>
+                        </div>
+                    </div>
+                </SlideWrapper>
+            );
+        };
+
+        const SilenceBreakerSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-9">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">🔔</div>
+                    <h2 className="text-3xl font-bold text-gray-800">Silence Breaker</h2>
+                    {data.silenceBreaker && (
+                        <>
+                            <div className="text-5xl font-bold text-gray-900 my-8">{data.silenceBreaker.name}</div>
+                            <p className="text-gray-700">Revived the chat <span className="font-bold">{data.silenceBreaker.count}</span> times</p>
+                        </>
+                    )}
+                </div>
+            </SlideWrapper>
+        );
+
+        const EmojiKingSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-10">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">😂</div>
+                    <h2 className="text-3xl font-bold">Emoji Champion</h2>
+                    {data.topEmojiUser && (
+                        <>
+                            <div className="text-5xl font-bold my-8">{data.topEmojiUser.name}</div>
+                            <p className="text-white/80">Used <span className="font-bold text-yellow-300">{data.topEmojiUser.count}</span> emojis!</p>
+                        </>
+                    )}
+                </div>
+            </SlideWrapper>
+        );
+
+        const EmojisSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-1">
+                <div className="text-center space-y-8">
+                    <h2 className="text-3xl font-bold">Top Emojis</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                        {data.topEmojis.map((e, i) => (
+                            <div key={i} className={`flex flex-col items-center justify-center p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 ${i === 0 ? 'col-span-2 py-8 bg-yellow-400/20' : ''}`}>
+                                <div className={`${i === 0 ? 'text-6xl' : 'text-4xl'} mb-2`}>{e.emoji}</div>
+                                <div className="text-white/80 text-sm">{e.count} uses</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </SlideWrapper>
+        );
+
+        const RapidFireSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-2">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">💬</div>
+                    <h2 className="text-3xl font-bold">Rapid Fire</h2>
+                    {data.rapidFireKing && (
+                        <>
+                            <div className="text-5xl font-bold my-8">{data.rapidFireKing.name}</div>
+                            <p className="text-white/80">Sent <span className="font-bold">{data.rapidFireKing.count}</span> rapid-fire messages</p>
+                            <p className="text-sm text-white/60">(within 60 seconds)</p>
+                        </>
+                    )}
+                </div>
+            </SlideWrapper>
+        );
+
+        const EssayistSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-3">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">📝</div>
+                    <h2 className="text-3xl font-bold">The Essayist</h2>
+                    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/20">
+                        <div className="text-4xl font-bold mb-4">{data.essayist.name}</div>
+                        <div className="text-6xl font-bold text-yellow-300 my-4">{data.essayist.wordCount}</div>
+                        <p className="text-white/80 text-sm">words in one message!</p>
+                        <div className="mt-4 text-xs text-white/60 italic line-clamp-3">"{data.essayist.preview}..."</div>
+                    </div>
+                </div>
+            </SlideWrapper>
+        );
+
+        const TypingVibeSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-4">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">⌨️</div>
+                    <h2 className="text-3xl font-bold">Typing Vibe</h2>
+                    <p className="text-white/80 mb-6">Average words per message</p>
+                    <div className="space-y-4">
+                        {Object.entries(data.typingVibe).map(([author, avgWords], i) => (
+                            <div key={i} className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
+                                <div className="flex justify-between items-center">
+                                    <span className="font-semibold">{author}</span>
+                                    <span className="text-3xl font-bold">{avgWords}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </SlideWrapper>
+        );
+
+        const SignatureWordsSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-5">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">🎯</div>
+                    <h2 className="text-3xl font-bold">Signature Words</h2>
+                    <p className="text-white/80 text-sm mb-6">Unique words you use most</p>
+                    <div className="space-y-4">
+                        {Object.entries(data.signatureWords).map(([author, words], i) => (
+                            <div key={i} className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
+                                <div className="font-bold mb-2 text-lg">{author}</div>
+                                <div className="flex gap-2 flex-wrap justify-center">
+                                    {words.map((word, j) => (
+                                        <span key={j} className="px-3 py-1 bg-white/20 rounded-full text-sm">{word}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </SlideWrapper>
+        );
+
+        const OnRepeatSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-6">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">🔁</div>
+                    <h2 className="text-3xl font-bold">On Repeat</h2>
+                    <p className="text-white/80 text-sm mb-6">Most used words overall</p>
+                    <div className="space-y-3">
+                        {data.topWords.map((item, i) => (
+                            <div key={i} className="flex items-center gap-4 bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
+                                <div className="text-2xl font-bold w-8">{i + 1}</div>
+                                <div className="flex-1 text-left">
+                                    <div className="text-xl font-bold">{item.word}</div>
+                                </div>
+                                <div className="text-2xl font-bold">{item.count}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </SlideWrapper>
+        );
+
+        const MainCharacterSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-7">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">⭐</div>
+                    <h2 className="text-3xl font-bold text-gray-800">Main Character Energy</h2>
+                    {data.mainCharacter && (
+                        <>
+                            <div className="text-5xl font-bold text-gray-900 my-8">{data.mainCharacter.name}</div>
+                            <p className="text-gray-700">Dominated the last <span className="font-bold">{data.mainCharacter.days}</span> days with <span className="font-bold">{data.mainCharacter.count}</span> messages</p>
+                        </>
+                    )}
+                </div>
+            </SlideWrapper>
+        );
+
+        const ReceiptSlide = ({ data }) => (
+            <SlideWrapper bgClass="gradient-bg-8">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">🧾</div>
+                    <h2 className="text-3xl font-bold text-gray-800">The Receipt</h2>
+                    <div className="bg-white/90 text-gray-900 p-6 rounded-2xl shadow-2xl">
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between border-b border-gray-300 pb-2">
+                                <span>Total Messages</span>
+                                <span className="font-bold">{data.totalMessages.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-gray-300 pb-2">
+                                <span>Duration</span>
+                                <span className="font-bold">{data.durationDays} days</span>
+                            </div>
+                            <div className="flex justify-between border-b border-gray-300 pb-2">
+                                <span>Longest Streak</span>
+                                <span className="font-bold">{data.longestStreak} days</span>
+                            </div>
+                            <div className="flex justify-between border-b border-gray-300 pb-2">
+                                <span>Top Chatter</span>
+                                <span className="font-bold">{data.authors[0].name}</span>
+                            </div>
+                            {data.silenceBreaker && (
+                                <div className="flex justify-between border-b border-gray-300 pb-2">
+                                    <span>Silence Breaker</span>
+                                    <span className="font-bold">{data.silenceBreaker.name}</span>
+                                </div>
+                            )}
+                            {data.rapidFireKing && (
+                                <div className="flex justify-between border-b border-gray-300 pb-2">
+                                    <span>Rapid Fire King</span>
+                                    <span className="font-bold">{data.rapidFireKing.name}</span>
+                                </div>
+                            )}
+                            <div className="pt-4 text-center text-xs text-gray-600">
+                                Made with 💚 locally on your device
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </SlideWrapper>
+        );
+
+        const ConclusionSlide = ({ onReset }) => (
+            <SlideWrapper bgClass="gradient-bg-9">
+                <div className="text-center space-y-6">
+                    <div className="text-6xl mb-4">🎊</div>
+                    <h2 className="text-4xl font-bold text-gray-800 bg-clip-text">
+                        That's a Wrap!
+                    </h2>
+                    <p className="text-gray-700">Thanks for the memories ✨</p>
+                    <button
+                        onClick={onReset}
+                        className="mt-8 px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-full hover:scale-105 transition-transform shadow-lg pointer-events-auto cursor-pointer"
+                    >
+                        Analyze Another Chat
+                    </button>
+                </div>
+            </SlideWrapper>
+        );
+
+        // --- STORY VIEWER ---
+        const slides = [
+            'Intro', 'Total', 'Streak', 'Authors', 'MostActiveDay', 'WeeklyFlow',
+            'Time', 'LongestSilence', 'SilenceBreaker', 'EmojiKing', 'Emojis',
+            'RapidFire', 'Essayist', 'TypingVibe', 'SignatureWords', 'OnRepeat',
+            'MainCharacter', 'Receipt', 'Conclusion'
+        ];
+
+        function StoryViewer({ data, onReset }) {
+            const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+            const nextSlide = () => {
+                if (currentSlideIndex < slides.length - 1) setCurrentSlideIndex(prev => prev + 1);
+            };
+            const prevSlide = () => {
+                if (currentSlideIndex > 0) setCurrentSlideIndex(prev => prev - 1);
+            };
+
+            useEffect(() => { lucide.createIcons(); }, [currentSlideIndex]);
+
+            const renderSlide = () => {
+                switch (slides[currentSlideIndex]) {
+                    case 'Intro': return <IntroSlide data={data} />;
+                    case 'Total': return <TotalSlide data={data} />;
+                    case 'Streak': return <StreakSlide data={data} />;
+                    case 'Authors': return <AuthorsSlide data={data} />;
+                    case 'MostActiveDay': return <MostActiveDaySlide data={data} />;
+                    case 'WeeklyFlow': return <WeeklyFlowSlide data={data} />;
+                    case 'Time': return <TimeSlide data={data} />;
+                    case 'LongestSilence': return <LongestSilenceSlide data={data} />;
+                    case 'SilenceBreaker': return <SilenceBreakerSlide data={data} />;
+                    case 'EmojiKing': return <EmojiKingSlide data={data} />;
+                    case 'Emojis': return <EmojisSlide data={data} />;
+                    case 'RapidFire': return <RapidFireSlide data={data} />;
+                    case 'Essayist': return <EssayistSlide data={data} />;
+                    case 'TypingVibe': return <TypingVibeSlide data={data} />;
+                    case 'SignatureWords': return <SignatureWordsSlide data={data} />;
+                    case 'OnRepeat': return <OnRepeatSlide data={data} />;
+                    case 'MainCharacter': return <MainCharacterSlide data={data} />;
+                    case 'Receipt': return <ReceiptSlide data={data} />;
+                    case 'Conclusion': return <ConclusionSlide onReset={onReset} />;
+                    default: return null;
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black text-white flex flex-col items-center justify-center overflow-hidden">
+                    <div className="absolute top-4 left-0 right-0 z-50 flex gap-1 px-2">
+                        {slides.map((_, idx) => (
+                            <div key={idx} className="h-1 flex-1 bg-gray-700 rounded-full overflow-hidden">
+                                <div className={`h-full bg-white transition-all duration-300 ${idx <= currentSlideIndex ? 'w-full' : 'w-0'}`}></div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <button onClick={onReset} className="absolute top-8 right-4 z-50 p-2 text-white/60 hover:text-white">
+                        <i data-lucide="x" className="w-6 h-6"></i>
+                    </button>
+
+                    <div className="absolute inset-0 flex z-40">
+                        <div className="w-1/3 h-full cursor-pointer" onClick={prevSlide}></div>
+                        <div className="w-2/3 h-full cursor-pointer" onClick={nextSlide}></div>
+                    </div>
+
+                    <div className="w-full h-full flex flex-col relative z-0 pointer-events-none">
+                        <div className="flex-1 flex items-center justify-center w-full">
+                            {renderSlide()}
+                        </div>
+                    </div>
+
+                    <div className="absolute bottom-8 text-xs text-white/50 z-50">
+                        Tap right to continue • Tap left to go back
+                    </div>
+                </div>
+            );
+        }
+
+        // --- MAIN APP ---
+        function App() {
+            const [data, setData] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+
+            const handleFileUpload = async (file) => {
+                setLoading(true);
+                setError(null);
+                try {
+                    const text = await file.text();
+                    const messages = parseChat(text);
+                    if (messages.length === 0) throw new Error("No messages found. Is this a WhatsApp export?");
+
+                    setTimeout(() => {
+                        const stats = analyzeChat(messages);
+                        setData(stats);
+                        setLoading(false);
+                    }, 1500);
+                } catch (err) {
+                    console.error(err);
+                    setError(err.message);
+                    setLoading(false);
+                }
+            };
+
+            if (data) return <StoryViewer data={data} onReset={() => setData(null)} />;
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                    <Landing onFileUpload={handleFileUpload} loading={loading} error={error} />
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

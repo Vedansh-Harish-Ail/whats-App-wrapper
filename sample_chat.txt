@@ -1,0 +1,39 @@
+24/12/2024, 10:00 - Alice: Hey! How are you?
+24/12/2024, 10:02 - Bob: I'm good! How about you?
+24/12/2024, 10:05 - Alice: Great! Just working on a project 😊
+24/12/2024, 10:08 - Bob: Nice! What kind of project?
+24/12/2024, 10:10 - Alice: A web app for analyzing WhatsApp chats
+24/12/2024, 10:12 - Bob: That sounds amazing! 🚀
+24/12/2024, 10:15 - Alice: Yeah it's pretty cool. It shows stats like who messages more, busiest hours, etc.
+24/12/2024, 10:16 - Bob: Wow
+24/12/2024, 10:17 - Bob: That's awesome
+24/12/2024, 10:18 - Bob: Can I try it?
+24/12/2024, 14:30 - Alice: Sure! I'll send you the link later
+24/12/2024, 18:00 - Bob: Thanks! Looking forward to it 😄
+24/12/2024, 18:05 - Alice: No problem!
+25/12/2024, 09:00 - Bob: Good morning! ☀️
+25/12/2024, 09:15 - Alice: Morning! Happy holidays! 🎄
+25/12/2024, 09:20 - Bob: You too! Any plans for today?
+25/12/2024, 09:25 - Alice: Just relaxing at home. You?
+25/12/2024, 09:30 - Bob: Same here! Might watch some movies
+25/12/2024, 12:00 - Alice: That sounds nice! I'm thinking of cooking something special for dinner tonight. Maybe some pasta with homemade sauce, garlic bread, and a nice salad. I've been wanting to try this new recipe I found online that uses fresh tomatoes, basil, and a secret blend of Italian spices.
+25/12/2024, 12:05 - Bob: Yum! 😋
+25/12/2024, 15:00 - Alice: Just finished cooking! It turned out great
+25/12/2024, 15:02 - Bob: Send pics! 📸
+25/12/2024, 15:05 - Alice: Here you go! 
+25/12/2024, 15:10 - Bob: Looks delicious!
+26/12/2024, 08:00 - Alice: Good morning!
+26/12/2024, 08:30 - Bob: Hey! How was dinner last night?
+26/12/2024, 08:35 - Alice: It was fantastic! Everyone loved it
+26/12/2024, 08:40 - Bob: Awesome! I need to get that recipe from you
+26/12/2024, 10:00 - Alice: Sure! I'll send it over
+26/12/2024, 10:01 - Alice: Actually let me type it out
+26/12/2024, 10:02 - Alice: First you need fresh tomatoes
+26/12/2024, 10:03 - Alice: Then basil
+26/12/2024, 10:04 - Alice: And garlic
+26/12/2024, 16:00 - Bob: Thanks again! Can't wait to try it 🍝
+26/12/2024, 16:05 - Alice: Let me know how it goes! 😊
+27/12/2024, 19:00 - Bob: I made it! It was delicious! 🎉
+27/12/2024, 19:05 - Alice: Yay! I'm so glad you liked it!
+27/12/2024, 19:10 - Bob: Best pasta I've ever made
+27/12/2024, 19:15 - Alice: That's amazing! 💚
